@@ -1,0 +1,208 @@
+{
+  "name": "ConsultBae CSV Duplicate Detection",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "duplicate-check-csv",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "70018e36-0bc4-4f95-a1b3-50478ee2b842",
+      "name": "Webhook",
+      "webhookId": "f9240b11-b806-4a21-8044-e545882a01bb"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "file",
+        "options": {
+          "delimiter": ",",
+          "encoding": "utf-8",
+          "headerRow": true
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "84cab557-6a1d-4d65-806d-3dba0b8b11de",
+      "name": "Extract CSV Rows"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/duplicates/check",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "name",
+              "value": "={{ $json.name }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        448,
+        0
+      ],
+      "id": "e3204c5d-82c5-4f90-a044-2e3a66238076",
+      "name": "Check Duplicate API"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cc11a907-1c19-4a6f-8a67-e27015a4f5b9",
+              "leftValue": "={{ $json.duplicate }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        0
+      ],
+      "id": "12db06b3-8030-4f81-b8ad-471baf4efe41",
+      "name": "Duplicate Found?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{\n  {\n    \"alert\": true,\n    \"status\": \"duplicate_found\",\n    \"message\": $json.message,\n    \"match_type\": $json.match_type,\n    \"confidence\": $json.confidence,\n    \"matches\": $json.matches\n  }\n}}",
+        "options": {
+          "responseCode": 409
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        896,
+        -96
+      ],
+      "id": "7ccd941e-95af-49e9-91e0-d02db4c6a45a",
+      "name": "Send Duplicate Alert",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{\n  {\n    \"alert\": false,\n    \"status\": \"no_duplicate\",\n    \"message\": $json.message\n  }\n}}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        896,
+        96
+      ],
+      "id": "a9a5d7ba-02c5-4f6d-8a30-bc572f2ac6ed",
+      "name": "Send No Duplicate Response"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract CSV Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract CSV Rows": {
+      "main": [
+        [
+          {
+            "node": "Check Duplicate API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Duplicate API": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate Found?": {
+      "main": [
+        [
+          {
+            "node": "Send Duplicate Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send No Duplicate Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "51e0f222-725f-4e87-bf72-134b32cc0bfd",
+  "meta": {
+    "instanceId": "f2ee295108e4369528531c6cae888ce1bebb72f83802830878f339cfd421377b"
+  },
+  "nodeGroups": [],
+  "id": "bYTBRi3K50VIKgI3",
+  "tags": []
+}
