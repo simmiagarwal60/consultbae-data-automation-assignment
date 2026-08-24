@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtual environment
+.venv/
+
+# Environment variables
+.env
+
+# Generated database
+database/*.db
+database/*.sqlite
+database/*.sqlite3
+
+# Uploaded audio
+uploads/*
+!uploads/.gitkeep
+
+# Processed data
+data/processed/*
+!data/processed/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+
+# Operating system
+.DS_Store
+Thumbs.db
