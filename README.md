@@ -89,3 +89,60 @@ Automatic merges were allowed only for exact normalized email or phone matches. 
 **How I got unstuck:** I placed fixed field names in the n8n Name boxes and expressions such as `{{ $json.name }}` only in the Value boxes.
 
 **Suggestion rejected:** I did not weaken API validation, because the API correctly exposed a malformed automation request.
+## Scaling to 5,000 Workers Over One Weekend
+
+The current application is intentionally designed for a local demonstration. It stores audio on one machine, writes synchronously to SQLite and analyzes every file during the submission request. Those choices would not survive a concentrated 5,000-worker launch.
+
+### What Breaks First
+
+**1. Local file storage**
+
+The first major risk is disk capacity and durability. A one-minute, 16 kHz, 16-bit mono WAV file is approximately 1.9 MB. At 5,000 submissions, that is roughly 9.5 GB before backups and retries. Higher sample rates or stereo recordings could increase this substantially. A machine restart, disk failure or redeployment could also remove every recording.
+
+**2. SQLite write contention**
+
+SQLite is appropriate for a local prototype, but it permits limited concurrent writing. Simultaneous submissions could produce locked-database errors, slow requests and failed inserts.
+
+**3. Synchronous audio analysis**
+
+The current request saves and analyzes the entire recording before responding. Long recordings or traffic spikes would consume CPU and memory, increase response times and cause browser timeouts.
+
+**4. Large uploads through the application server**
+
+Routing every audio byte through the Streamlit process would consume memory, network bandwidth and worker capacity. A few slow uploads could block other users.
+
+**5. Duplicate submissions and retries**
+
+Workers may double-click Submit, refresh after a timeout or retry from another device. Without idempotency, the system could store the same recording multiple times and pay to process it repeatedly.
+
+### Changes Required Before Launch
+
+**Object storage:** Store recordings in Amazon S3, Cloudflare R2 or another S3-compatible service instead of local disk. The application should request a presigned upload URL so browsers upload directly to object storage.
+
+**Production database:** Replace SQLite with managed PostgreSQL. Add unique constraints for normalized phone plus project/task identifiers and an idempotency key for each submission.
+
+**Asynchronous processing:** Return success after the upload and database record are accepted. Send an analysis job to a queue such as Redis Queue, Celery or a cloud queue. Background workers would extract duration, sample rate, bitrate, loudness and quality metrics.
+
+**Submission states:** Track `uploading`, `uploaded`, `processing`, `completed` and `failed`. Workers should be able to retry failed processing without uploading the file again.
+
+**Upload controls:** Enforce allowed file types, maximum size, maximum duration and minimum sample rate. Reject empty, corrupted or unexpectedly executable files. Use server-generated object names rather than user filenames.
+
+**Reliability:** Use idempotency keys, database transactions and retry policies with exponential backoff. Store a checksum to detect repeated audio files. Failed jobs should move to a dead-letter queue for investigation.
+
+**Traffic protection:** Apply per-phone and per-IP rate limits. Use a CDN and load balancer, and run multiple stateless application instances with autoscaling.
+
+**Monitoring:** Track submission count, success rate, upload latency, processing latency, queue depth, error rate, duplicate rate, storage consumption and estimated cost. Alert when failures or queue depth exceed defined thresholds.
+
+**Security and privacy:** Encrypt audio in transit and at rest, restrict storage access, use short-lived signed URLs, record user consent, define a retention period and automatically delete expired recordings. Avoid exposing phone numbers in logs.
+
+**Worker experience:** Show upload progress and a submission reference number. Preserve the selected recording during retry where possible and clearly distinguish upload completion from analysis completion.
+
+### Cost Control
+
+The largest costs would be object storage, bandwidth and background audio processing. Costs can be controlled by limiting duration, recording mono audio at an appropriate sample rate, applying lifecycle deletion rules, processing each checksum only once and scaling workers down after the weekend.
+
+The production path would therefore be:
+
+`Browser → Presigned object-storage upload → PostgreSQL submission record → Queue → Audio-analysis worker → Metadata update`
+
+This separates uploads from processing, prevents the web application from becoming the bottleneck and allows each component to scale independently.
