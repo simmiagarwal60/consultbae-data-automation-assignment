@@ -1,0 +1,6 @@
+pandas
+SQLAlchemy
+rapidfuzz
+phonenumbers
+python-dateutil
+pytest
