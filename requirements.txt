@@ -4,3 +4,5 @@ rapidfuzz
 phonenumbers
 python-dateutil
 pytest
+fastapi
+uvicorn[standard]
