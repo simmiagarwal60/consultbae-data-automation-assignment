@@ -6,3 +6,6 @@ python-dateutil
 pytest
 fastapi
 uvicorn[standard]
+streamlit
+numpy
+soundfile

@@ -509,3 +509,76 @@ class MatchReview(Base):
         nullable=False,
         server_default=func.current_timestamp(),
     )
+
+class AudioSubmission(Base):
+    """Audio recording submitted by a gig worker."""
+
+    __tablename__ = "audio_submissions"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    person_id: Mapped[int] = mapped_column(
+        ForeignKey("people.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    submitted_name: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False,
+    )
+
+    submitted_phone: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
+
+    file_path: Mapped[str] = mapped_column(
+        String(500),
+        nullable=False,
+    )
+
+    original_filename: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+    )
+
+    duration_seconds: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+    )
+
+    sample_rate_hz: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+
+    bitrate_kbps: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+    )
+
+    loudness_dbfs: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+    )
+
+    estimated_snr_db: Mapped[Optional[float]] = mapped_column(
+        Float,
+        nullable=True,
+    )
+
+    quality_label: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+    )
